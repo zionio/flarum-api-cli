@@ -1,3 +1,3 @@
-base_url = 'https://forum.lostintheshell.com'
-auth_token = 'o5ST31E4NYc5uYHwEZzIYIIKazTpQ86j5AdPbeaz'
+base_url = 'your flarum url here'
+auth_token = 'your flarum authorization token'
 ssl_verity_cert = True
