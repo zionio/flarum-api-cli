@@ -9,7 +9,7 @@ import dateutil.parser
 from prettytable import PrettyTable
 from config import *
 
-prog_name = sys.argv[0]
+prog_name = 'flarum-api-cli.py'
 
 class FParse(object):
     global prog_name
@@ -69,8 +69,8 @@ Active commands are:
             print t
 
         if args.delete:
-            if not args.username:
-                print 'USERNAME required'
+            if not args.id:
+                print 'ID required'
             if args.id:
                 t = delete_user_by_id(id=args.id)
                 print t
@@ -105,7 +105,7 @@ Active commands are:
 
         if args.create:
             if not args.singular or not args.plural:
-                print 'SINGULAR and PLURAL name required'
+                print 'SINGULAR and PLURAL group name required'
             if args.singular and args.plural:
                 t = create_group(name_singular=args.singular, name_plural=args.plural)
                 print t
@@ -127,7 +127,7 @@ Active commands are:
 
         if args.create:
             if not args.name or not args.slug:
-                print 'NAME and SLUG required'
+                print 'tag NAME and SLUG required'
             if args.name and args.slug:
                 print create_tag(name=args.name, slug=args.slug)
 
@@ -148,6 +148,15 @@ api_groups = api_endpoint + '/groups'
 api_header = { 'Content-Type' : 'application/vnd.api+json' }
 auth_headers = {'Content-Type':'application/json',
                'Authorization': 'Token {}'.format(auth_token)}
+
+def errors(json):
+    e = {}
+    json_data = json['errors']
+    for dict in json_data:
+        for key, value in dict.iteritems():
+            if key == 'status' or key == 'code' or key == 'detail':
+                e.update({key: value})
+    return e
 
 def retrieve_token(username, password):
     data = { "identification" : str(username), "password" : str(password) }
@@ -170,7 +179,6 @@ def get_all_tags():
         t.add_row(['failed', httplib.responses[r.status_code]])
     return t
 
-
 def delete_tag_by_id(id):
     api_delete_tags = api_tags + '/' + id
     r = requests.delete (url = api_delete_tags, headers = auth_headers, verify = ssl_verity_cert)
@@ -178,16 +186,18 @@ def delete_tag_by_id(id):
     if r.status_code == 204:
         t.add_row([id, 'deleted'])
     else:
-        t.add_row([id, httplib.responses[r.status_code]])
+        t.add_row([id, errors(r.json())['code']])
     return t
 
 def create_tag(name, slug):
     data = {'data': { 'attributes': {'name': name, 'slug': slug }}}
     r = requests.post (url = api_tags, headers = auth_headers, data = json.dumps(data), verify = ssl_verity_cert)
-    t = PrettyTable(['Tag name', 'Tag slug', 'Status'])
     if r.status_code == 201:
-        t.add_row([name, slug, 'created'])
+        t = PrettyTable(['ID', 'Tag name', 'Tag slug', 'Status'])
+        id = r.json()['data']['id']
+        t.add_row([id, name, slug, 'created'])
     else:
+        t = PrettyTable(['Tag name', 'Tag slug', 'Status'])
         t.add_row([name, slug, httplib.responses[r.status_code]])
     return t
 
@@ -196,10 +206,12 @@ def create_tag(name, slug):
 def create_group(name_singular, name_plural):
     data = {'data': { 'attributes': {'nameSingular': name_singular, 'namePlural': name_plural }}}
     r = requests.post (url = api_groups, headers = auth_headers, data = json.dumps(data), verify = ssl_verity_cert)
-    t = PrettyTable(['Name singular', 'Name plural', 'Status'])
     if r.status_code == 201:
-        t.add_row([name_singular, name_plural, 'created'])
+        t = PrettyTable(['ID', 'Name singular', 'Name plural', 'Status'])
+        id = r.json()['data']['id']
+        t.add_row([ id, name_singular, name_plural, 'created' ])
     else:
+        t = PrettyTable(['Name singular', 'Name plural', 'Status'])
         t.add_row([name_singular, name_plural, httplib.responses[r.status_code]])
     return t
 
@@ -221,7 +233,7 @@ def delete_group_by_id(id):
     if r.status_code == 204:
         t.add_row([id, 'deleted'])
     else:
-        t.add_row([id, httplib.responses[r.status_code]])
+        t.add_row([id, errors(r.json())['code']])
     return t
 
 ## USERS
@@ -250,11 +262,13 @@ def get_all_users():
 def register_user(username, email, password):
     data = {'data': { 'attributes': {'username': username, 'email': email, 'password': password }}}
     r = requests.post (url = api_users, headers = auth_headers, data = json.dumps(data), verify = ssl_verity_cert)
-    t = PrettyTable(['Username', 'Email', 'Status'])
     if r.status_code == 201:
-        t.add_row([ username, email, 'created'])
+        t = PrettyTable(['ID', 'Username', 'Email', 'Status'])
+        id = r.json()['data']['id']
+        t.add_row([ id, username, email, 'created'])
     if r.status_code == 422:
-        t.add_row([ username, email, 'failed: email already taken'])
+        t = PrettyTable(['Username', 'Email', 'Status'])
+        t.add_row([ username, email, errors(r.json())['detail']])
     return t
 
 def delete_user_by_id(id):
@@ -264,7 +278,7 @@ def delete_user_by_id(id):
     if r.status_code == 204:
         t.add_row([ id, 'deleted'])
     else:
-        t.add_row([ id, 'error'])
+        t.add_row([ id, errors(r.json())['code']])
     return t
 
 if __name__ == '__main__':
