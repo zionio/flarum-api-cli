@@ -19,11 +19,9 @@ features of [Flarum forum software](https://flarum.org) such as users, groups an
 
 ## Requirements
 
+Modules: argparse, requests, prettytable, dateutil, httplib
 ```bash
-$ pip install argparse
-$ pip install requests
-$ pip install python-dateutil
-$ pip install prettytable
+$ pip install -r requirements.txt
 ```
 
 ## Configuration
